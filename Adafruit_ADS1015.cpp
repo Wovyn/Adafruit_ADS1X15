@@ -51,12 +51,23 @@
     @brief  Abstract away platform differences in Arduino wire library
 */
 /**************************************************************************/
-static uint8_t i2cread(void) {
-  #if ARDUINO >= 100
-  return Wire.read();
-  #else
-  return Wire.receive();
-  #endif
+uint8_t Adafruit_ADS1015::i2cread(void) {
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        #if ARDUINO >= 100
+        return _hardPort->read();
+        #else
+        return _hardPort->receive();
+        #endif
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        return _softPort->read();
+        #endif
+        break;
+    }
 }
 
 /**************************************************************************/
@@ -64,12 +75,23 @@ static uint8_t i2cread(void) {
     @brief  Abstract away platform differences in Arduino wire library
 */
 /**************************************************************************/
-static void i2cwrite(uint8_t x) {
-  #if ARDUINO >= 100
-  Wire.write((uint8_t)x);
-  #else
-  Wire.send(x);
-  #endif
+void Adafruit_ADS1015::i2cwrite(uint8_t x) {
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        #if ARDUINO >= 100
+        _hardPort->write((uint8_t)x);
+        #else
+        _hardPort->send(x);
+        #endif
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->write((uint8_t)x);
+        #endif
+        break;
+    }
 }
 
 /**************************************************************************/
@@ -77,12 +99,27 @@ static void i2cwrite(uint8_t x) {
     @brief  Writes 16-bits to the specified destination register
 */
 /**************************************************************************/
-static void writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value) {
-  Wire.beginTransmission(i2cAddress);
-  i2cwrite((uint8_t)reg);
-  i2cwrite((uint8_t)(value>>8));
-  i2cwrite((uint8_t)(value & 0xFF));
-  Wire.endTransmission();
+void Adafruit_ADS1015::writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value) {
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        _hardPort->beginTransmission(i2cAddress);
+        i2cwrite((uint8_t)reg);
+        i2cwrite((uint8_t)(value>>8));
+        i2cwrite((uint8_t)(value & 0xFF));
+        _hardPort->endTransmission();
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->beginTransmission(i2cAddress);
+        i2cwrite((uint8_t)reg);
+        i2cwrite((uint8_t)(value>>8));
+        i2cwrite((uint8_t)(value & 0xFF));
+        _softPort->endTransmission();
+        #endif
+        break;
+    }
 }
 
 /**************************************************************************/
@@ -90,12 +127,27 @@ static void writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value) {
     @brief  Reads 16-bits to the specified destination register
 */
 /**************************************************************************/
-static uint16_t readRegister(uint8_t i2cAddress, uint8_t reg) {
-  Wire.beginTransmission(i2cAddress);
-  i2cwrite(reg);
-  Wire.endTransmission();
-  Wire.requestFrom(i2cAddress, (uint8_t)2);
-  return ((i2cread() << 8) | i2cread());  
+uint16_t Adafruit_ADS1015::readRegister(uint8_t i2cAddress, uint8_t reg) {
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        _hardPort->beginTransmission(i2cAddress);
+        i2cwrite(reg);
+        _hardPort->endTransmission();
+        _hardPort->requestFrom(i2cAddress, (uint8_t)2);
+        return ((i2cread() << 8) | i2cread());  
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->beginTransmission(i2cAddress);
+        i2cwrite(reg);
+        _softPort->endTransmission();
+        _softPort->requestFrom(i2cAddress, (uint8_t)2);
+        return ((i2cread() << 8) | i2cread());  
+        #endif
+        break;
+    }
 }
 
 /**************************************************************************/
@@ -107,6 +159,9 @@ Adafruit_ADS1015::Adafruit_ADS1015(uint8_t i2cAddress)
 {
    m_i2cAddress = i2cAddress;
    m_bitShift = ADS1015_CONV_REG_BIT_SHIFT_4;
+   _hardPort = &Wire;	//Default to Wire port
+   _wireType = HARD_WIRE;
+
 }
 
 /**************************************************************************/
@@ -118,6 +173,112 @@ Adafruit_ADS1115::Adafruit_ADS1115(uint8_t i2cAddress)
 {
    m_i2cAddress = i2cAddress;
    m_bitShift = ADS1115_CONV_REG_BIT_SHIFT_0;
+   _hardPort = &Wire;	//Default to Wire port
+   _wireType = HARD_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new TwoWire ADS1015 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1015::Adafruit_ADS1015(TwoWire &wirePort) 
+{
+   m_i2cAddress = ADS1X15_ADDRESS;
+   m_bitShift = ADS1015_CONV_REG_BIT_SHIFT_4;
+   _hardPort = &wirePort;	//Default to Wire port
+   _wireType = HARD_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new TwoWire ADS1115 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1115::Adafruit_ADS1115(TwoWire &wirePort)
+{
+   m_i2cAddress = ADS1X15_ADDRESS;
+   m_bitShift = ADS1115_CONV_REG_BIT_SHIFT_0;
+   _hardPort = &wirePort;	//Default to Wire port
+   _wireType = HARD_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new TwoWire ADS1015 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1015::Adafruit_ADS1015(TwoWire &wirePort, uint8_t i2cAddress) 
+{
+   m_i2cAddress = i2cAddress;
+   m_bitShift = ADS1015_CONV_REG_BIT_SHIFT_4;
+   _hardPort = &wirePort;	//Default to Wire port
+   _wireType = HARD_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new TwoWire ADS1115 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1115::Adafruit_ADS1115(TwoWire &wirePort, uint8_t i2cAddress)
+{
+   m_i2cAddress = i2cAddress;
+   m_bitShift = ADS1115_CONV_REG_BIT_SHIFT_0;
+   _hardPort = &wirePort;	//Default to Wire port
+   _wireType = HARD_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new SoftwareWire ADS1015 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1015::Adafruit_ADS1015(SoftwareWire& wirePort) 
+{
+   m_i2cAddress = ADS1X15_ADDRESS;
+   m_bitShift = ADS1015_CONV_REG_BIT_SHIFT_4;
+   _softPort = &wirePort;	//Default to Wire port
+   _wireType = SOFT_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new SoftwareWire ADS1115 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1115::Adafruit_ADS1115(SoftwareWire& wirePort)
+{
+   m_i2cAddress = ADS1X15_ADDRESS;
+   m_bitShift = ADS1115_CONV_REG_BIT_SHIFT_0;
+   _softPort = &wirePort;	//Default to Wire port
+   _wireType = SOFT_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new SoftwareWire ADS1015 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1015::Adafruit_ADS1015(SoftwareWire& wirePort, uint8_t i2cAddress) 
+{
+   m_i2cAddress = i2cAddress;
+   m_bitShift = ADS1015_CONV_REG_BIT_SHIFT_4;
+   _softPort = &wirePort;	//Default to Wire port
+   _wireType = SOFT_WIRE;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new SoftwareWire ADS1115 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1115::Adafruit_ADS1115(SoftwareWire& wirePort, uint8_t i2cAddress)
+{
+   m_i2cAddress = i2cAddress;
+   m_bitShift = ADS1115_CONV_REG_BIT_SHIFT_0;
+   _softPort = &wirePort;	//Default to Wire port
+   _wireType = SOFT_WIRE;
 }
 
 /**************************************************************************/
@@ -126,7 +287,18 @@ Adafruit_ADS1115::Adafruit_ADS1115(uint8_t i2cAddress)
 */
 /**************************************************************************/
 void Adafruit_ADS1015::begin() {
-  Wire.begin();
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        _hardPort->begin();
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->begin();
+        #endif
+        break;
+    }
 }
 
 #if defined(ARDUINO_ARCH_ESP8266)
@@ -138,9 +310,53 @@ void Adafruit_ADS1015::begin() {
 */
 /**************************************************************************/
 void Adafruit_ADS1015::begin(uint8_t sda, uint8_t scl) {
-  Wire.begin(sda, scl);
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        _hardPort->begin(sda, scl);
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->begin(sda, scl);
+        #endif
+        break;
+    }
 }
 #endif
+
+/**************************************************************************/
+/*!
+    @brief  starts and ends an I2C transmission, if no devices are present this returns false
+*/
+/**************************************************************************/
+uint8_t Adafruit_ADS1015::isPresent()
+{
+  switch(_wireType)
+    {
+      case(HARD_WIRE):
+        _hardPort->beginTransmission(m_i2cAddress);
+        return !_hardPort->endTransmission() ? true : false;
+        break;
+
+      case(SOFT_WIRE):
+        #ifdef SoftwareWire_h
+        _softPort->beginTransmission(m_i2cAddress);
+        return !_softPort->endTransmission() ? true : false;
+        #endif
+        break;
+    }
+}
+
+/**************************************************************************/
+/*!
+    @brief  set the I2C address the library should use for communications
+*/
+/**************************************************************************/
+void Adafruit_ADS1015::setI2CAddress(uint8_t i2cAddress)
+{
+   m_i2cAddress = i2cAddress;
+}
 
 /**************************************************************************/
 /*!
@@ -706,4 +922,3 @@ float Adafruit_ADS1015::voltsPerBit()
 	}
 	return v;
 }
-

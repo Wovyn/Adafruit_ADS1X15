@@ -30,6 +30,16 @@
 
 #include <Wire.h>
 
+//Uncomment the following line to enable software I2C
+//You will need to have the SoftwareWire library installed
+#ifndef ARDUINO_ARCH_ESP8266
+#include <SoftwareWire.h> //SoftwareWire by Testato. Installed from library manager.
+#endif
+
+#define NO_WIRE 0
+#define HARD_WIRE 1
+#define SOFT_WIRE 2
+
 /*=========================================================================
     I2C ADDRESS/BITS
     -----------------------------------------------------------------------*/
@@ -196,12 +206,27 @@ protected:
    adsGain_t m_gain                = GAIN_DEFAULT;  /* +/- 6.144V range (limited to VDD +0.3V max!) */
    adsSPS_t  m_SPS                 = DR_DEFAULT_SPS;
 
+   uint8_t _wireType = HARD_WIRE; //Default to Wire.h
+   TwoWire *_hardPort = NO_WIRE; //The generic connection to user's chosen I2C hardware
+    
+   #ifdef SoftwareWire_h
+   SoftwareWire *_softPort = NO_WIRE; //Or, the generic connection to software wire port
+   #endif
+
  public:
   Adafruit_ADS1015(uint8_t i2cAddress = ADS1X15_ADDRESS);
+  Adafruit_ADS1015(TwoWire &wirePort);                          //Called when user provides Wire port
+  Adafruit_ADS1015(TwoWire &wirePort, uint8_t i2cAddress);      //Called when user provides Wire port
+  #ifdef SoftwareWire_h
+  Adafruit_ADS1015(SoftwareWire &wirePort);                     //Called when user provides a SoftwareWire port
+  Adafruit_ADS1015(SoftwareWire &wirePort, uint8_t i2cAddress); //Called when user provides a SoftwareWire port
+#endif
   void begin(void);
 #if defined(ARDUINO_ARCH_ESP8266)
   void begin(uint8_t sda, uint8_t scl);
 #endif  
+  uint8_t   isPresent();                         // return true/false if the I2C address responds
+  void      setI2CAddress(uint8_t i2cAddress);      //Set the I2C address the library should use
   int16_t   readADC_SingleEnded(uint8_t channel);
   int16_t   readADC_Differential(adsDiffMux_t);
   int16_t   readADC_Differential_0_1(void);
@@ -230,6 +255,10 @@ protected:
   void      waitForConversion();
 
  private:
+  uint8_t   i2cread(void);
+  void      i2cwrite(uint8_t x);
+  void      writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value);
+  uint16_t  readRegister(uint8_t i2cAddress, uint8_t reg);
 
 };
 
@@ -238,6 +267,12 @@ class Adafruit_ADS1115 : public Adafruit_ADS1015
 {
  public:
   Adafruit_ADS1115(uint8_t i2cAddress = ADS1X15_ADDRESS);
+  Adafruit_ADS1115(TwoWire &wirePort);                  //Called when user provides Wire port
+  Adafruit_ADS1115(TwoWire &wirePort, uint8_t address); //Called when user provides Wire port
+  #ifdef SoftwareWire_h
+  Adafruit_ADS1115(SoftwareWire &wirePort);                  //Called when user provides a SoftwareWire port
+  Adafruit_ADS1115(SoftwareWire &wirePort, uint8_t address); //Called when user provides a SoftwareWire port
+#endif
 
  private:
 };
