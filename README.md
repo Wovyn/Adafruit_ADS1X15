@@ -1,6 +1,19 @@
 Adafruit_ADS1015
 ================
 
+Enhancements in this version by Wovyn, L.L.C. - Scott C. Lemon
+
+* Added support for SoftwareWire - https://github.com/Testato/SoftwareWire
+** allows the ADS1x15 to be used on any pins, not just the hardware I2C pins
+
+* Added isPresent() method - attempts I2C transaction to the current I2C Address
+** provides a way to see if something responds
+
+* Added setI2CAddress() method - change/set the current I2C Address
+** provides a ways to interact with multiple chips
+
+-----
+
 Driver for TI's ADS1015: 12-bit Differential or Single-Ended ADC with PGA and Comparator
 <!-- START COMPATIBILITY TABLE -->
 
